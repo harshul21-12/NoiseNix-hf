@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Enhancement - MetricGAN+</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #764ba2;
+            background-color: #f8f9ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e0e6ed;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .status-message {
+            text-align: center;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .processing { color: #ffc107; }
+
+        .audio-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .audio-player {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .audio-player h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .audio-player audio {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .file-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .file-info p {
+            margin: 5px 0;
+        }
+
+        .comparison-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Audio Enhancement</h1>
+            <p>Enhance your audio quality using MetricGAN+ AI technology</p>
+        </div>
+
+        <div class="card">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">
+                    <strong>Click to upload</strong> or drag and drop your audio file here
+                </div>
+                <p style="color: #999; font-size: 0.9rem; margin-top: 10px;">
+                    Supported format: WAV files only • Max size: 50MB
+                </p>
+                <input type="file" id="fileInput" class="file-input" accept=".wav" />
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="status-message" id="statusMessage">Uploading...</div>
+            </div>
+
+            <div class="file-info" id="fileInfo" style="display: none;">
+                <h3>📄 File Information</h3>
+                <p><strong>Filename:</strong> <span id="fileName"></span></p>
+                <p><strong>Size:</strong> <span id="fileSize"></span></p>
+                <p><strong>Status:</strong> <span id="fileStatus"></span></p>
+            </div>
+        </div>
+
+        <div class="card audio-section" id="audioSection">
+            <h2>🎧 Audio Comparison</h2>
+            
+            <div class="comparison-section">
+                <div class="audio-player">
+                    <h3>Original Audio</h3>
+                    <audio controls id="originalAudio">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+
+                <div class="audio-player">
+                    <h3>Enhanced Audio</h3>
+                    <audio controls id="enhancedAudio">
+                        Your browser does not support the audio element.
+                    </audio>
+                    <button class="btn download-btn" id="downloadBtn" onclick="downloadEnhanced()">
+                        📥 Download Enhanced Audio
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFileId = null;
+        let pollInterval = null;
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const statusMessage = document.getElementById('statusMessage');
+        const fileInfo = document.getElementById('fileInfo');
+        const audioSection = document.getElementById('audioSection');
+        const originalAudio = document.getElementById('originalAudio');
+        const enhancedAudio = document.getElementById('enhancedAudio');
+
+        // File upload handlers
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('drop', handleDrop);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            // Validate file
+            if (!file.name.toLowerCase().endsWith('.wav')) {
+                showError('Please select a WAV file.');
+                return;
+            }
+
+            if (file.size > 50 * 1024 * 1024) {
+                showError('File too large. Maximum size is 50MB.');
+                return;
+            }
+
+            uploadFile(file);
+        }
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showProgress('Uploading file...');
+                
+                const response = await fetch('/api/v1/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Upload failed');
+                }
+
+                const result = await response.json();
+                currentFileId = result.file_id;
+                
+                // Show file info
+                showFileInfo(result.filename, formatFileSize(result.file_size), result.status);
+                
+                // Set original audio source
+                originalAudio.src = `/api/v1/stream/${currentFileId}?audio_type=original`;
+                
+                // Start polling for status
+                startStatusPolling();
+
+            } catch (error) {
+                showError(`Upload failed: ${error.message}`);
+            }
+        }
+
+        function startStatusPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/v1/status/${currentFileId}`);
+                    if (!response.ok) return;
+
+                    const status = await response.json();
+                    updateStatus(status);
+
+                    if (status.status === 'enhanced') {
+                        clearInterval(pollInterval);
+                        showEnhancedAudio();
+                    } else if (status.status === 'error') {
+                        clearInterval(pollInterval);
+                        showError(`Enhancement failed: ${status.error_message}`);
+                    }
+                } catch (error) {
+                    console.error('Status polling error:', error);
+                }
+            }, 2000);
+        }
+
+        function updateStatus(status) {
+            const statusMessages = {
+                'uploaded': 'File uploaded, waiting to start processing...',
+                'processing': 'Enhancing audio with MetricGAN+...',
+                'enhanced': 'Enhancement completed successfully!',
+                'error': 'Enhancement failed. Please try again.'
+            };
+
+            const message = statusMessages[status.status] || 'Processing...';
+            showProgress(message, status.status);
+            
+            // Update file status
+            document.getElementById('fileStatus').textContent = status.status.toUpperCase();
+        }
+
+        function showEnhancedAudio() {
+            // Hide progress
+            progressContainer.style.display = 'none';
+            
+            // Show success message
+            showSuccess('Enhancement completed! You can now compare and download the audio.');
+            
+            // Set enhanced audio source
+            enhancedAudio.src = `/api/v1/stream/${currentFileId}?audio_type=enhanced`;
+            
+            // Show audio section
+            audioSection.style.display = 'block';
+        }
+
+        function downloadEnhanced() {
+            if (currentFileId) {
+                window.open(`/api/v1/download/${currentFileId}`, '_blank');
+            }
+        }
+
+        function showProgress(message, status = 'processing') {
+            progressContainer.style.display = 'block';
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${status}`;
+            
+            if (status === 'processing') {
+                progressFill.style.width = '100%';
+            }
+        }
+
+        function showSuccess(message) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message success';
+        }
+
+        function showError(message) {
+            progressContainer.style.display = 'block';
+            progressFill.style.width = '0%';
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message error';
+        }
+
+        function showFileInfo(filename, size, status) {
+            document.getElementById('fileName').textContent = filename;
+            document.getElementById('fileSize').textContent = size;
+            document.getElementById('fileStatus').textContent = status.toUpperCase();
+            fileInfo.style.display = 'block';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        });
+    </script>
+</body>
+</html>
